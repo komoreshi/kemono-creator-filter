@@ -8,6 +8,8 @@
 // @grant        GM_getValue
 // @license      MIT
 // @run-at       document-start
+// @updateURL    https://raw.githubusercontent.com/komoreshi/kemono-creator-filter/main/kemono_creator_filter.meta.js
+// @downloadURL  https://raw.githubusercontent.com/komoreshi/kemono-creator-filter/main/kemono_creator_filter.user.js
 // @esversion    11
 // ==/UserScript==
 
