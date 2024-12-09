@@ -6,9 +6,10 @@ Due to Kemono switching it's frontend to React, the original userscript no longe
 
 Blocked creators are stored in the userscript's value storage under the `blacklists` key. Violentmonkey and Tampermonkey allow you to view and edit this should you wish to import existing lists.
 
+## Installation
+
+Assuming you've got a userscript manager like Violentmonkey or Tampermonkey, simply visit https://github.com/komoreshi/kemono-creator-filter/raw/refs/heads/main/kemono_creator_filter.user.js and follow the prompt to install.
+
 ## Blacklist format
 
-When a creator is blocked, the value is stored in the format `service`_`user`.
-
-
-  
+When a creator is blocked, the value is stored in the format `service`_`user`. For example: `fanbox_00000000`, `patreon_00000000`, `gumroad_0000000000000`, etc.
