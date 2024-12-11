@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Kemono - Creator Filter
+// @name         Kemono Creator Filter
 // @description  Block specified creators on artists and posts pages.
-// @version      1.16
+// @version      1.17
 // @match        https://*.kemono.su/*
 // @match        https://kemono.su/*
 // @grant        GM_setValue
