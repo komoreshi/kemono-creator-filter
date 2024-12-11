@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Kemono - Creator Filter
-// @description  Block specified creators in artists page and posts page.
+// @description  Block specified creators on artists and posts pages.
 // @version      1.16
 // @match        https://*.kemono.su/*
 // @match        https://kemono.su/*
@@ -23,7 +23,6 @@ let is_artists_page = false;
 function debugLog(msg, data) {
     console.log(`[Creator Filter] ${msg}`, data || '');
 }
-
 
 // burn in hell for this sloppy work-around react
 function updatePageState() {
