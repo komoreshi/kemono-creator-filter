@@ -4,6 +4,9 @@ This is a fork of the `Kemono.Party - User Filter` userscript provided on [Sleaz
 
 Due to Kemono switching it's frontend to React, the original userscript no longer works. This version (as hacky as it is) should work with the recent changes.
 
+> [!IMPORTANT]  
+> Updating to v1.19 includes a change to the structure of the blacklists key. You will need to re-import your existing entries after creating a new list/using `Default`. Note that your original list will still be intact under value storage, it just wont be interpreted correctly until this is done.
+
 ## Installation
 
 Assuming you've got a userscript manager like Violentmonkey or Tampermonkey, simply visit https://github.com/komoreshi/kemono-creator-filter/raw/refs/heads/main/kemono_creator_filter.user.js and follow the prompt to install.
