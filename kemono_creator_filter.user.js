@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kemono - Creator Filter
 // @description  Block specified creators on artists and posts pages.
-// @version      1.17
+// @version      1.18
 // @match        https://*.kemono.su/*
 // @match        https://kemono.su/*
 // @grant        GM_setValue
@@ -204,7 +204,7 @@ function addBlockButtonTo(card) {
         e.preventDefault();
         e.stopPropagation();
         updateCards(service, user, card.dataset.blocked, is_artists_page && card);
-        blockUser(service, user);
+        blockUser(service, user, is_blocked);
     };
 
     if (is_posts_page) {
@@ -320,9 +320,13 @@ function addBlockButtonToUserPage() {
 function blockUser(service, user, is_blocked) {
     let user_id = service + '_' + user;
     if (is_blocked) {
-        blacklists = blacklists.filter(id => id !== user_id);
+        // Remove user ID
+      blacklists = blacklists.filter(id => id !== user_id);
     } else {
+      // Only add if it doesn't exist
+      if (!blacklists.includes(user_id)) {
         blacklists.push(user_id);
+      }
     }
     GM_setValue('blacklists', blacklists);
 }
