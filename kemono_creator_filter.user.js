@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kemono - Creator Filter
 // @description  Block specified creators on artists and posts pages.
-// @version      1.18
+// @version      1.19
 // @match        https://*.kemono.su/*
 // @match        https://kemono.su/*
 // @grant        GM_setValue
@@ -11,18 +11,17 @@
 // @esversion    11
 // ==/UserScript==
 
-let blacklists = GM_getValue('blacklists', []);
+let blacklists = GM_getValue('blacklists', {});
 let filter_enabled = GM_getValue('filter_enabled', true);
 let is_user_page = false;
 let is_posts_page = false;
 let is_artists_page = false;
+const DEFAULT_LIST_NAME = 'Default';
 
-// debug helper stays because this was hell
 function debugLog(msg, data) {
     console.log(`[Creator Filter] ${msg}`, data || '');
 }
 
-// burn in hell for this sloppy work-around react
 function updatePageState() {
     const path = location.pathname;
     is_user_page = path.indexOf('/user/') >= 0;
@@ -37,7 +36,6 @@ function shouldInitialize() {
            path.includes('/user/');
 }
 
-// main init
 function initializeScript() {
     debugLog('Initializing script');
     updatePageState();
@@ -47,8 +45,13 @@ function initializeScript() {
         return;
     }
 
-    blacklists = GM_getValue('blacklists', []);
-    filter_enabled = GM_getValue('filter_enabled', true);
+    blacklists = GM_getValue('blacklists', {});
+
+  // initialize default list if it doesn't exist
+   if (!blacklists[DEFAULT_LIST_NAME]) {
+        blacklists[DEFAULT_LIST_NAME] = [];
+    }
+   filter_enabled = GM_getValue('filter_enabled', true);
 
     // ensure styles are added
     if (!document.querySelector('#kemono-filter-style')) {
@@ -131,7 +134,7 @@ function setupCardObserver() {
         if (is_posts_page) {
             document.querySelectorAll('article.post-card').forEach(card => {
                 if (!card.querySelector('.btn-block')) {
-                    debugLog('Adding block button to post card', card);
+                    // debugLog('Adding block button to post card', card);
                     addBlockButtonTo(card);
                 }
             });
@@ -140,7 +143,7 @@ function setupCardObserver() {
         if (is_artists_page) {
             document.querySelectorAll('a.user-card').forEach(card => {
                 if (!card.querySelector('.btn-block')) {
-                    debugLog('Adding block button to artist card', card);
+                    // debugLog('Adding block button to artist card', card);
                     addBlockButtonTo(card);
                 }
             });
@@ -173,7 +176,7 @@ function addFilterButtonTo(menu) {
 }
 
 function addBlockButtonTo(card) {
-    debugLog('Adding block button to card', card);
+    // debugLog('Adding block button to card', card);
     let service, user;
 
     if (card.classList.contains('post-card')) {
@@ -190,7 +193,8 @@ function addBlockButtonTo(card) {
         return;
     }
 
-    let is_blocked = blacklists.indexOf(service + '_' + user) >= 0;
+    const userId = service + '_' + user;
+    let is_blocked = Object.values(blacklists).some(list => list.includes(userId));
     if (is_blocked) card.dataset.blocked = true;
 
     let btn_block = document.createElement('label');
@@ -203,8 +207,8 @@ function addBlockButtonTo(card) {
     btn_block.onclick = e => {
         e.preventDefault();
         e.stopPropagation();
-        updateCards(service, user, card.dataset.blocked, is_artists_page && card);
-        blockUser(service, user, is_blocked);
+        const currentIsBlocked = Object.values(blacklists).some(list => list.includes(userId));
+        showBlockDialog(service, user, card, currentIsBlocked, is_artists_page);
     };
 
     if (is_posts_page) {
@@ -222,70 +226,14 @@ function addBlockButtonToUserPage() {
 
     debugLog('Starting to add block button to user page');
 
-    const actionSelectors = [
-        '.artist-links',              // try the artist links container
-        '.user-header .links',        // common pattern for header links
-        '.user-header__actions',      // original selector
-        '.artist-actions',            // another possible container
-        '.user-links'                 // generic links container
-    ];
-    let actionsContainer;
+    const actionsContainer = document.querySelector('.user-header__actions');
 
-    debugLog('Starting search for actions container');
-
-    for (const selector of actionSelectors) {
-        actionsContainer = document.querySelector(selector);
-        if (actionsContainer) {
-            debugLog('Found container using selector', {
-                selector: selector,
-                element: actionsContainer,
-                classes: actionsContainer.className,
-                html: actionsContainer.outerHTML
-            });
-            break;
-        } else {
-            debugLog('Selector not found', selector);
-        }
-    }
-
-    // try header link fallback
-    if (!actionsContainer) {
-        debugLog('No container found with primary selectors, trying header link fallback');
-        const headerLink = document.querySelector('.user-header a, .artist-header a');
-        if (headerLink) {
-            actionsContainer = headerLink.parentElement;
-            debugLog('Found container via header link parent', {
-                parentElement: actionsContainer,
-                classes: actionsContainer.className,
-                html: actionsContainer.outerHTML
-            });
-        } else {
-            debugLog('No header link found for fallback');
-        }
-    }
-
-    // try again
-    if (!actionsContainer) {
-        debugLog('No container found via link, trying header fallback');
-        const header = document.querySelector('.user-header, .artist-header');
-        if (header) {
-            actionsContainer = document.createElement('div');
-            actionsContainer.classList.add('artist-links');
-            header.appendChild(actionsContainer);
-            debugLog('Created new container in header', {
-                header: header,
-                newContainer: actionsContainer,
-                html: actionsContainer.outerHTML
-            });
-        } else {
-            debugLog('No header found for final fallback');
-        }
-    }
 
     if (!actionsContainer) {
-        debugLog('Could not find or create actions container');
-        return;
+      debugLog('Could not find .user-header__actions container');
+      return;
     }
+
 
     let [service, user] = location.pathname.slice(1).split('/user/');
     if (!service || !user) {
@@ -293,8 +241,9 @@ function addBlockButtonToUserPage() {
         return;
     }
 
-    let is_blocked = blacklists.indexOf(service + '_' + user) >= 0;
-    updateCards(service, user, !is_blocked);
+    const userId = service + '_' + user;
+    let is_blocked = Object.values(blacklists).some(list => list.includes(userId));
+
 
     let btn_block = document.createElement('a');
     btn_block.classList.add('btn-block-user');
@@ -304,39 +253,45 @@ function addBlockButtonToUserPage() {
 
     // insert at the end of the actions container
     actionsContainer.appendChild(btn_block);
-    debugLog('Block button added successfully', {
-        button: btn_block,
-        container: actionsContainer
+
+   btn_block.onclick = () => {
+       // recalculate is_blocked here
+       const is_blocked_on_click = Object.values(blacklists).some(list => list.includes(userId));
+       showBlockDialog(service, user, btn_block, is_blocked_on_click);
+   };
+}
+
+function updateCards(service, user, is_blocked) {
+    debugLog('Updating cards', { service, user, is_blocked });
+
+    // update post cards
+    const post_cards = document.querySelectorAll(`article.post-card[data-service="${service}"][data-user="${user}"]`);
+    post_cards.forEach(card => {
+        if (is_blocked) {
+            card.removeAttribute('data-blocked');
+        } else {
+            card.setAttribute('data-blocked', 'true');
+        }
+        debugLog('Updated post card', { card, is_blocked });
     });
 
-    btn_block.onclick = () => {
-        btn_block.classList.toggle('blocked');
-        updateCards(service, user, is_blocked);
-        blockUser(service, user, is_blocked);
-        is_blocked = !is_blocked;
-    };
-}
+    // update user cards
+    const user_cards = document.querySelectorAll(`a.user-card[href*="/${service}/user/${user}"]`);
+    user_cards.forEach(card => {
+        if (is_blocked) {
+            card.removeAttribute('data-blocked');
+        } else {
+            card.setAttribute('data-blocked', 'true');
+        }
+        debugLog('Updated user card', { card, is_blocked });
+    });
 
-function blockUser(service, user, is_blocked) {
-    let user_id = service + '_' + user;
-    if (is_blocked) {
-        // Remove user ID
-      blacklists = blacklists.filter(id => id !== user_id);
-    } else {
-      // Only add if it doesn't exist
-      if (!blacklists.includes(user_id)) {
-        blacklists.push(user_id);
-      }
-    }
-    GM_setValue('blacklists', blacklists);
-}
-
-function updateCards(service, user, is_blocked, user_card) {
-    if (user_card) updateCard(user_card, is_blocked);
-    else {
-        let post_cards = document.querySelectorAll(`article.post-card[data-service="${service}"][data-user="${user}"]`);
-        post_cards.forEach(post_card => updateCard(post_card, is_blocked));
-    }
+    // update block buttons
+    const blockButtons = document.querySelectorAll('.btn-block-user');
+    blockButtons.forEach(btn => {
+        btn.classList.toggle('blocked', !is_blocked);
+        debugLog('Updated block button', { btn, is_blocked });
+    });
 }
 
 function updateCard(card, is_blocked) {
@@ -355,6 +310,131 @@ function hintUser(service, user, is_blocked, onmouseover) {
         }
     });
 }
+
+function showBlockDialog(service, user, element, isBlocked, is_artists_page) {
+    const userId = service + '_' + user;
+    debugLog('Opening block dialog', { userId, isBlocked });
+
+    const dialog = document.createElement('div');
+    dialog.classList.add('block-dialog');
+
+    dialog.innerHTML = `
+        <div class="block-dialog-content">
+            <h2>${isBlocked ? 'Unblock' : 'Block'} User</h2>
+            <p>Select lists to ${isBlocked ? 'remove from' : 'add to'}:</p>
+            <div class="block-dialog-lists"></div>
+            ${isBlocked ? '' : '<input type="text" class="new-list-input" placeholder="New list name"><button class="create-list-btn">Create New List</button>'}
+            <div class="block-dialog-actions">
+                <button class="confirm-btn">${isBlocked ? 'Unblock' : 'Block'}</button>
+                <button class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    const listsContainer = dialog.querySelector('.block-dialog-lists');
+    const confirmButton = dialog.querySelector('.confirm-btn');
+    const cancelButton = dialog.querySelector('.cancel-btn');
+
+    const newListInput = dialog.querySelector('.new-list-input');
+    const createListBtn = dialog.querySelector('.create-list-btn');
+
+
+    // show only lists that contain the userId when unblocking
+    for (const listName in blacklists) {
+        if (blacklists.hasOwnProperty(listName)) {
+            if (isBlocked && !blacklists[listName].includes(userId)) {
+                continue;
+            }
+
+            const listDiv = document.createElement('div');
+            listDiv.classList.add('list-item');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `list-${listName}`;
+            checkbox.checked = blacklists[listName].includes(userId);
+            const label = document.createElement('label');
+            label.textContent = listName;
+            label.setAttribute('for', `list-${listName}`);
+            listDiv.appendChild(checkbox);
+            listDiv.appendChild(label);
+            listsContainer.appendChild(listDiv);
+        }
+    }
+
+    if (createListBtn) {
+        createListBtn.onclick = () => {
+           const newListName = newListInput.value.trim();
+             if (newListName) {
+                 if (!blacklists[newListName]) {
+                   blacklists[newListName] = [];
+                   const listDiv = document.createElement('div');
+                   listDiv.classList.add('list-item');
+                   const checkbox = document.createElement('input');
+                   checkbox.type = 'checkbox';
+                   checkbox.id = `list-${newListName}`;
+                   checkbox.checked = true;
+                   const label = document.createElement('label');
+                   label.textContent = newListName;
+                   label.setAttribute('for', `list-${newListName}`);
+                   listDiv.appendChild(checkbox);
+                   listDiv.appendChild(label);
+                   listsContainer.appendChild(listDiv);
+
+                   newListInput.value = "";
+
+                 } else {
+                    alert("List with this name already exists");
+                 }
+            }
+         }
+    }
+
+    confirmButton.onclick = () => {
+        debugLog('Confirm button clicked', { isBlocked });
+
+        if (isBlocked) {
+            for (const listName in blacklists) {
+                if (blacklists[listName].includes(userId)) {
+                    blacklists[listName] = blacklists[listName].filter(id => id !== userId);
+                    debugLog(`Removed ${userId} from ${listName}`);
+
+                    // clean up empty non-default lists
+                    if (blacklists[listName].length === 0 && listName !== DEFAULT_LIST_NAME) {
+                        delete blacklists[listName];
+                        debugLog(`Deleted empty list ${listName}`);
+                    }
+                }
+            }
+        } else {
+            const selectedLists = Array.from(listsContainer.querySelectorAll('input[type="checkbox"]:checked'))
+                .map(checkbox => checkbox.id.replace('list-', ''));
+
+            for (const listName of selectedLists) {
+                if (!blacklists[listName]) {
+                    blacklists[listName] = [];
+                }
+                if (!blacklists[listName].includes(userId)) {
+                    blacklists[listName].push(userId);
+                    debugLog(`Added ${userId} to ${listName}`);
+                }
+            }
+        }
+
+        GM_setValue('blacklists', blacklists);
+        debugLog('Updated blacklists', blacklists);
+
+        updateCards(service, user, isBlocked);
+
+        dialog.remove();
+    };
+
+    cancelButton.onclick = () => {
+        dialog.remove();
+    };
+}
+
 
 function addStyle() {
     // wait for head element to exist
@@ -404,6 +484,94 @@ function addStyle() {
     }
     /* UI fix for AutoPagerize */
     .autopagerize_page_separator, .autopagerize_page_info {flex: unset; width: 100%;}
+    /* Block dialog styles */
+   .block-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.75);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    }
+
+    .block-dialog-content {
+        background-color: #333;
+        color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        max-width: 400px;
+        text-align: center;
+    }
+
+    .block-dialog-lists {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+        text-align: left;
+        padding: 0 20px
+    }
+
+    .list-item {
+        margin: 5px 0;
+        display: flex;
+        align-items: center;
+    }
+    .list-item > input {
+       margin-right: 5px;
+    }
+    .list-item > label {
+        color: #fff;
+    }
+
+    .block-dialog-actions {
+       margin-top: 15px;
+       display: flex;
+       justify-content: center;
+       gap: 10px;
+    }
+
+    .block-dialog-actions button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .block-dialog-actions .confirm-btn {
+        background-color: #4caf50;
+        color: white;
+    }
+
+    .block-dialog-actions .cancel-btn {
+        background-color: #f44336;
+        color: white;
+    }
+
+    .new-list-input {
+        margin: 10px auto;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        display: block;
+        background-color: #444;
+        color: #fff;
+      }
+   .create-list-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background-color: #008CBA;
+        color: white;
+        display: block;
+        margin: 0 auto;
+    }
+
     `;
 
     // check if style already exists to prevent duplicates
@@ -455,6 +623,5 @@ function setupNavigationHandling() {
     };
 }
 
-// les go
 setupNavigationHandling();
 initializeScript();
