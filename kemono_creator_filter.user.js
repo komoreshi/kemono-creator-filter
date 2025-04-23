@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kemono - Creator Filter
 // @description  Block specified creators on artists and posts pages.
-// @version      1.20
+// @version      1.21
 // @match        https://*.kemono.su/*
 // @match        https://kemono.su/*
 // @grant        GM_setValue
@@ -168,7 +168,6 @@ function addFilterButtonTo(menu) {
     else btn_switch.classList.add('pagination-button-disabled');
     menu.insertBefore(btn_switch, menu.firstChild);
     btn_switch.onclick = () => {
-        console.log("Filter button clicked!");
         filter_enabled = !filter_enabled;
         menu.closest('section')?.classList.toggle('filter-enabled');
         btn_switch.classList.toggle('pagination-button-disabled');
