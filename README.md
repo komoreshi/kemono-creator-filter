@@ -39,3 +39,4 @@ When a creator is blocked, the value is stored in the format `service`_`user`. F
 
 ## To-do
  - Better handle adding accounts to more than one list. Currently, this is only achievable via manually editing the value storage keys.
+ - Import list functionality.
